@@ -15,8 +15,6 @@
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
 
-#include "tcpip_adapter.h"
-
 #include "ctype.h"
 
 /* UART */
@@ -330,7 +328,7 @@ void SIM5360_Lib::ppposStart()
   ppposInit("", "");
   startGPRS();
   sendData("AT+CGDATA=\"PPP\",1");
-
+  delay(1000);
   if (!firststart)
   {
     ppp = pppapi_pppos_create(&ppp_netif, ppp_output_callback, ppp_status_cb, NULL);
