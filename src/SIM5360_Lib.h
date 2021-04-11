@@ -24,7 +24,6 @@ private:
     String sendData(String comm);
 
     /*Lib*/
-    bool _Lib_status = false;
     String _res = "";
     void parseCoords(String nmea);
 
@@ -45,7 +44,7 @@ public:
     void getPos();
 
     /*PPPoS*/
-    void ppposStart();
+    bool ppposStart(int timeout);
     bool ppposStatus();
     void ppposStop();
     ~SIM5360_Lib();

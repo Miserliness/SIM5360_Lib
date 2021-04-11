@@ -15,7 +15,8 @@
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
 
-#include "ctype.h"
+#include "esp_timer.h"
+#include "ctype.h
 
 /* UART */
 int uart_num = UART_NUM_2;
@@ -122,7 +123,7 @@ bool SIM5360_Lib::startGPRS()
 }
 
 //-------------------------------------------------------------------------------------------------
-//GSM Lib
+//GSM GPS
 //-------------------------------------------------------------------------------------------------
 
 void SIM5360_Lib::getPos()
@@ -132,7 +133,7 @@ void SIM5360_Lib::getPos()
     Serial.println("GSM NOT INITED");
     return;
   }
-  sendData("AT+CLibINFO");
+  sendData("AT+CGPSINFO");
   parseResponse();
   String res = parseInfoFromResponse();
   parseCoords(res);
@@ -146,12 +147,12 @@ void SIM5360_Lib::initGPS()
     return;
   }
   sendData("AT+CGSOCKCONT=1,\"IP\",\"internet.tele2.ru\"");
-  sendData("AT+CLibURL=\"supl.google.com:7276\"");
-  sendData("AT+CLib=1");
+  sendData("AT+CGPSURL=\"supl.google.com:7276\"");
+  sendData("AT+CGPS=1");
   String res = parseResponse();
   if (res == "OK" || res == "ERROR")
   {
-    Serial.println("Lib ON");
+    Serial.println("GPS ON");
   }
 }
 
@@ -216,6 +217,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
   case PPPERR_NONE:
   {
     ESP_LOGE(TAG, "status_cb: Connected\n");
+
 #if PPP_IPV4_SUPPORT
     ESP_LOGE(TAG, "   our_ipaddr  = %s\n", ipaddr_ntoa(&pppif->ip_addr));
 
@@ -312,7 +314,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 
 void SIM5360_Lib::ppposInit(char *user, char *pass)
 {
-  tcpip_adapter_init();
+  //tcpip_adapter_init();
   PPP_User = user;
   PPP_Pass = pass;
   xTaskCreate(&pppos_client_task, "pppos_client_task", 10048, NULL, 5, NULL);
@@ -323,7 +325,7 @@ bool SIM5360_Lib::ppposConnectionStatus()
   return _ppposConnected;
 }
 
-void SIM5360_Lib::ppposStart()
+bool SIM5360_Lib::ppposStart(int timeout)
 {
   ppposInit("", "");
   startGPRS();
@@ -335,7 +337,7 @@ void SIM5360_Lib::ppposStart()
 
     if (ppp == NULL)
     {
-      return;
+      return false;
     }
 
     pppapi_set_default(ppp);
@@ -346,6 +348,14 @@ void SIM5360_Lib::ppposStart()
 
   ppposStarted = true;
   firststart = true;
+  long time = esp_timer_get_time() / 1000;
+  while (esp_timer_get_time() / 1000 - time < timeout)
+  {
+    if (_ppposConnected)
+      return true;
+  }
+  ppposStop();
+  return false;
 }
 
 bool SIM5360_Lib::ppposStatus()
@@ -356,5 +366,6 @@ bool SIM5360_Lib::ppposStatus()
 void SIM5360_Lib::ppposStop()
 {
   pppapi_close(ppp, 0);
+  delay(2000);
   sendData("AT+NETCLOSE");
 }
